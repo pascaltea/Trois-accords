@@ -1666,6 +1666,9 @@ function gtlDecorate(){
   const sync=$("#sync");if(sync&&!$("#instr"))sync.insertAdjacentHTML("afterend",instrHTML());
   const lf=$('[data-act="lefty"]');if(lf&&!$("#instr"))lf.closest(".chips").insertAdjacentHTML("afterend",instrHTML());
   const tn=$("#ex-tuner");if(tn&&!$("#instr")){const sg=tn.querySelector(".strings");if(sg)sg.insertAdjacentHTML("beforebegin",instrHTML());}
+  if(!$("#instr")){
+    if(view.song){const mx=$(".controls .stack");if(mx)mx.insertAdjacentHTML("beforebegin",instrHTML());}
+    else if(view.tab==="morceaux"||view.tab==="comptines"){const h=main.querySelector("h2"),host=h&&(view.tab==="comptines"?h.closest("section"):h);if(host)host.insertAdjacentHTML("afterend",instrHTML());}}
   if(!P.gtl)return;
   $$(".ccard .hd b, .mini b").forEach(b=>{if(!b.querySelector(".sndc"))b.insertAdjacentHTML("beforeend",`<small class="sndc">sonne ${esc(soundName(b.firstChild.textContent.trim()))}</small>`);});
   if(tn){[["A","6","La grave"],["D","5","Ré"],["G","4","Sol"],["C","3","Do"],["E","2","Mi"],["a","1","La aigu"]].forEach((s,i)=>{const b=$("#tn"+i);if(b)b.innerHTML=`<b>${s[0]}</b><span>${s[1]}e · ${s[2]}</span>`;});
