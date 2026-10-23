@@ -1611,6 +1611,91 @@ function afterSong(){
       toast(on?"Arpège : pouce sur la basse, puis cordes 3, 2, 1.":"Retour au rythme d'origine.");}
   });
 })();
+/* ================= v8 : mode guitalele ================= */
+(function(){const st=document.createElement("style");st.textContent=`
+.sndc{display:block;font-family:var(--f-body);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.02em;line-height:1.2}
+.snd{font-size:13px;font-weight:600;color:var(--stage-muted);min-height:1em}
+.now .snd{grid-column:1/-1;margin-top:-4px}
+#instr{gap:8px}`;document.head.appendChild(st);})();
+const NOTE_N=["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+function gT(){return P.gtl?5:0;}
+function soundName(name){const tr=s=>{const m=/^([A-G])(#|b)?(.*)$/.exec(s);if(!m)return s;const pc=(PCN[m[1]]+(m[2]==="#"?1:m[2]==="b"?-1:0)+5+12)%12;return NOTE_N[pc]+m[3];};
+  const m=/^(.*)\/([A-G][#b]?)$/.exec(name);return m?tr(m[1])+"/"+tr(m[2]):tr(name);}
+
+/* --- tout le son monte d'une quarte en mode guitalele --- */
+function note(stringIdx,fret,t,vel,dest){const f=OPEN[stringIdx]*Math.pow(2,(fret+gT())/12);const src=ctx.createBufferSource();src.buffer=pluckBuf(f);const g=ctx.createGain();g.gain.value=vel;src.connect(g);g.connect(dest||master);
+  const prev=ringing[stringIdx];if(prev){try{prev.g.gain.setTargetAtTime(0,t,.02);prev.src.stop(t+.25);}catch(e){}}src.start(t);ringing[stringIdx]={src,g};}
+function bassNote(midi,t,d,dest){const f=mtof(midi+gT());const o=ctx.createOscillator(),s=ctx.createOscillator();o.type="sawtooth";s.type="sine";o.frequency.value=f;s.frequency.value=f;
+  const lp=ctx.createBiquadFilter();lp.type="lowpass";lp.frequency.setValueAtTime(1400,t);lp.frequency.exponentialRampToValueAtTime(380,t+.25);
+  const g=ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.01);g.gain.exponentialRampToValueAtTime(.12,t+Math.max(.05,d*.7));g.gain.linearRampToValueAtTime(0,t+d);
+  const sg=ctx.createGain();sg.gain.value=.7;o.connect(lp);lp.connect(g);s.connect(sg);sg.connect(g);g.connect(dest);o.start(t);s.start(t);o.stop(t+d+.02);s.stop(t+d+.02);track(g,t+d+.02);}
+function piano(name,t,d,capo,dest){const c=CHORDS[name];if(!c)return;const pcs=[...new Set(c.f.map((f,i)=>f<0?-1:(OPEN_M[i]+f+capo+gT())%12).filter(x=>x>=0))];
+  const g=ctx.createGain();g.connect(dest);const end=t+Math.max(.6,d+.25);
+  pcs.forEach((pc,k)=>{const m=55+((pc-7+12)%12),tt=t+k*.004;const o=ctx.createOscillator(),o2=ctx.createOscillator(),e=ctx.createGain(),e2=ctx.createGain();o.type="triangle";o2.type="sine";o.frequency.value=mtof(m);o2.frequency.value=mtof(m)*2;e2.gain.value=.3;
+    o.connect(e);o2.connect(e2);e2.connect(e);e.gain.setValueAtTime(0,tt);e.gain.linearRampToValueAtTime(.11,tt+.006);e.gain.exponentialRampToValueAtTime(.035,tt+.5);e.gain.exponentialRampToValueAtTime(.001,end);e.connect(g);o.start(tt);o2.start(tt);o.stop(end+.05);o2.stop(end+.05);});
+  track(g,end+.05);}
+function sing(midi,t,d,dest){const f=mtof(midi+(P.gtl?-7:0));
+  const o=ctx.createOscillator(),o2=ctx.createOscillator();o.type="sawtooth";o2.type="sawtooth";o.frequency.value=f;o2.frequency.value=f*1.004;
+  const lfo=ctx.createOscillator(),lg=ctx.createGain();lfo.frequency.value=5.2;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.012,t+Math.min(.4,d*.6));lfo.connect(lg);lg.connect(o.frequency);lg.connect(o2.frequency);
+  const pre=ctx.createGain();pre.gain.value=.5;o.connect(pre);o2.connect(pre);
+  const env=ctx.createGain();env.gain.setValueAtTime(0,t);env.gain.linearRampToValueAtTime(.32,t+.04);env.gain.setValueAtTime(.32,t+Math.max(.05,d-.08));env.gain.linearRampToValueAtTime(0,t+d);
+  [[730,7,1],[1090,9,.55],[2440,12,.3]].forEach(([fr,q,a])=>{const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=fr;bp.Q.value=q;const ga=ctx.createGain();ga.gain.value=a*2.4;pre.connect(bp);bp.connect(ga);ga.connect(env);});
+  env.connect(dest);[o,o2,lfo].forEach(x=>{x.start(t);x.stop(t+d+.05);});track(env,t+d+.05);}
+function tabNote(n,t,d,prev){const idx=6-n[0],tech=n[3];let from=n[1];if((tech==="/"||tech==="\\")&&prev)from=prev[1];
+  const src=ctx.createBufferSource();src.buffer=pluckBuf(OPEN[idx]*Math.pow(2,(from+gT())/12));const g=ctx.createGain();let vel=.45;
+  if(tech==="h"||tech==="p")vel=.3;
+  if(from!==n[1]){src.playbackRate.setValueAtTime(1,t);src.playbackRate.linearRampToValueAtTime(Math.pow(2,(n[1]-from)/12),t+Math.min(.12,d*.5));vel=.36;}
+  if(tech==="b"){src.playbackRate.setValueAtTime(1,t+.04);src.playbackRate.linearRampToValueAtTime(Math.pow(2,2/12),t+Math.min(.28,d*.6));}
+  let node=src;if(tech==="pm"){const lp=ctx.createBiquadFilter();lp.type="lowpass";lp.frequency.value=900;src.connect(lp);node=lp;}
+  node.connect(g);g.connect(master);g.gain.setValueAtTime(vel,t);const rel=tech==="pm"?t+.14:t+d+.25;g.gain.setTargetAtTime(0,rel,tech==="pm"?.03:.08);
+  const pr=ringing[idx];if(pr){try{pr.g.gain.setTargetAtTime(0,t,.015);}catch(e){}}ringing[idx]={src,g};
+  src.start(t);src.stop(rel+.6);track(g,rel+.6);}
+
+/* --- affichage : noms réellement entendus, accordeur, sélecteur d'instrument --- */
+function songStep(b,s,gap){
+  $$("#strum .sl").forEach((c,i)=>c.classList.toggle("on",!gap&&i===s));
+  const cnt=$("#count");if(!cnt)return;
+  const spb=PATS[S.song.pat].s.length/bpbOf(S.song.beats);
+  if(b<0){cnt.hidden=false;cnt.textContent=Math.floor(s/spb)+1;return;}
+  cnt.hidden=true;const bar=S.bars[b];
+  if(gap){paintBar(b,false);$("#secLbl").textContent="Place tes doigts";S.curBar=-9;paintSnd();return;}
+  paintBar(b,bar.ch.length>1&&s>=PATS[S.song.pat].s.length/2);paintSnd();}
+function paintSnd(){const a=$("#nowSnd"),b=$("#nextSnd");if(a)a.textContent=P.gtl&&S&&S.curCh?"sonne "+soundName(S.curCh):"";if(b)b.textContent=P.gtl&&S&&S.nextCh?"sonne "+soundName(S.nextCh):"";}
+function instrHTML(){return `<div class="stack" id="instr" style="gap:6px"><div class="row"><span class="eyebrow">Instrument</span><div class="chips"><button class="chip" data-act="instr" data-v="gtr" aria-pressed="${!P.gtl}">Guitare</button><button class="chip" data-act="instr" data-v="gtl" aria-pressed="${!!P.gtl}">Guitalele</button></div></div>${P.gtl?`<p class="note">Mode guitalele : mêmes doigtés, l'accompagnement monte d'une quarte pour sonner juste avec toi. Le nom en grand est la forme que tu joues, « sonne » indique l'accord réellement entendu.</p>`:""}</div>`;}
+function gtlDecorate(){
+  const sync=$("#sync");if(sync&&!$("#instr"))sync.insertAdjacentHTML("afterend",instrHTML());
+  const lf=$('[data-act="lefty"]');if(lf&&!$("#instr"))lf.closest(".chips").insertAdjacentHTML("afterend",instrHTML());
+  const tn=$("#ex-tuner");if(tn&&!$("#instr")){const sg=tn.querySelector(".strings");if(sg)sg.insertAdjacentHTML("beforebegin",instrHTML());}
+  if(!P.gtl)return;
+  $$(".ccard .hd b, .mini b").forEach(b=>{if(!b.querySelector(".sndc"))b.insertAdjacentHTML("beforeend",`<small class="sndc">sonne ${esc(soundName(b.firstChild.textContent.trim()))}</small>`);});
+  if(tn){[["A","6","La grave"],["D","5","Ré"],["G","4","Sol"],["C","3","Do"],["E","2","Mi"],["a","1","La aigu"]].forEach((s,i)=>{const b=$("#tn"+i);if(b)b.innerHTML=`<b>${s[0]}</b><span>${s[1]}e · ${s[2]}</span>`;});
+    const np=tn.querySelector("p.note");if(np&&!np.dataset.g){np.dataset.g="1";np.textContent="Touche une corde pour entendre la note juste, puis tourne la mécanique jusqu'à ce que les deux sons se fondent sans vibration. Accordage guitalele : La, Ré, Sol, Do, Mi, La, de la corde la plus grave à la plus aiguë.";}}
+  const tl=$$(".tab .tl");if(tl.length===6)["a","E","C","G","D","A"].forEach((n,i)=>{tl[i].textContent=n;});
+  const nn=$("#nowName");if(nn&&!$("#nowSnd")){nn.insertAdjacentHTML("afterend",'<div class="snd" id="nowSnd"></div>');const nx=$("#nextName");if(nx)nx.insertAdjacentHTML("afterend",'<div class="snd" id="nextSnd"></div>');paintSnd();}
+  if(view.song){const tipP=[...$$("section.panel")].find(s=>{const h=s.querySelector("h3");return h&&h.textContent==="Conseil";});
+    if(tipP&&!tipP.dataset.g){tipP.dataset.g="1";tipP.insertAdjacentHTML("beforeend",`<p class="note">Sur guitalele, ce morceau sonne une quarte plus haut que l'original${S&&S.song?" (en "+esc(soundName(S.song.ch[0]))+" au lieu de "+esc(S.song.ch[0])+")":""}. Pour jouer avec le disque, il faudrait des formes une quarte plus bas.</p>`);}}
+  const sc=$(".sc");if(sc&&!sc.dataset.g){sc.dataset.g="1";sc.insertAdjacentHTML("afterend",`<p class="note">Sur guitalele, la même forme sonne en Ré mineur : les ronds dorés sont des Ré.</p>`);}
+}
+function render(){
+  $$("#tabs button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===view.tab?"page":"false"));
+  render2Stats();
+  if(view.song){renderSong();afterSong();gtlDecorate();return;}
+  if(view.tab==="exercices"&&view.tabl){renderTabLesson();gtlDecorate();return;}
+  ({parcours:renderParcours,morceaux:renderMorceaux,comptines:renderComptines,accords:renderAccords,exercices:renderExercices})[view.tab]();
+  if(view.tab==="exercices")afterExercices();
+  if(view.tab==="accords")afterAccords();
+  gtlDecorate();}
+function coachContext(){const ci=curStep(),st=STEPS[ci];const mastered=Object.keys(P.chords).join(", ")||"aucun";
+  const recs=Object.entries(P.changes).map(([k,h])=>k.replace("-"," vers ")+" : record "+Math.max(...h.map(x=>x.n))+" par minute").slice(0,12).join(" ; ")||"aucun";
+  let s="Élève adulte qui apprend avec un parcours de "+STEPS.length+" étapes. Instrument : "+(P.gtl?"guitalele (6 cordes, accordée La Ré Sol Do Mi La comme une guitare avec un capo en case 5 ; les formes d'accords sont celles de la guitare et sonnent une quarte plus haut)":"guitare")+". Étape actuelle : "+(ci+1)+" « "+st.t+" ». Accords validés : "+mastered+". Records de changements d'accords : "+recs+".";
+  if(view.song&&S&&S.song)s+=" Morceau ouvert : "+S.song.t+" ("+(S.song.a||"")+"), tempo original "+S.song.bpm+" BPM, réglé à "+Math.round(S.rate*100)+" %, accords "+S.song.ch.join(" ")+", rythme "+PATS[S.song.pat].n+".";
+  if(view.tabl&&TABBY[view.tabl])s+=" Leçon de tablature ouverte : "+TABBY[view.tabl].t+".";
+  return s;}
+(function(){
+  ["xpair","rpat","xsave","apat","aprog"].forEach(k=>{const f=ACT[k];ACT[k]=(v,el)=>{f(v,el);gtlDecorate();};});
+  ACT.instr=v=>{const on=v==="gtl";if(!!P.gtl===on)return;if(Eng.run)engStop();tabStop();hush();P.gtl=on;save();
+    const y=window.scrollY;render();window.scrollTo(0,y);toast(on?"Mode guitalele : l'accompagnement monte d'une quarte.":"Mode guitare");};
+})();
 initCloud();initCoach();
 render();
 </script>
