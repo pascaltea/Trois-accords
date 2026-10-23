@@ -1523,6 +1523,94 @@ let TAPS=[];
     coachstop:()=>{if(coachCtl)coachCtl.abort();}
   });
 })();
+/* ================= v7 : section Arpèges + Redemption Song ================= */
+(function(){const st=document.createElement("style");st.textContent=`
+.dg .fl{fill:var(--ink);font:500 11px var(--f-body)}.dg .fk{fill:var(--brass-ink);font-weight:700}.dg .br{stroke:var(--brass);stroke-width:2}
+.fingers{max-width:340px}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--brass-ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}`;document.head.appendChild(st);})();
+CHORDS["C/B"]={f:[-1,2,2,0,1,0],n:[0,2,3,0,1,0],tip:"Le C dont la basse descend d'une case : le majeur passe de la case 3 à la case 2 de la 5e corde. Un passage entre C et Am."};
+GROUPS[2][1].push("C/B");
+Object.assign(PATS,{
+  arpUp:{n:"Arpège montant",d:"Pouce sur la basse, puis index, majeur et annulaire sur les cordes 3, 2 et 1. Deux fois par mesure. Le premier arpège à apprendre.",s:["P","3","2","1","P","3","2","1"]},
+  travis:{n:"Travis",d:"Le pouce alterne entre la basse (P) et la corde voisine (P') sur chaque temps, l'index et le majeur jouent entre les temps. Le son du folk et de la country.",s:["P","2","P'","1","P","2","P'","1"]},
+  pinch:{n:"Pincé",d:"Pouce et annulaire ensemble sur le premier temps (P+1), puis l'arpège. L'accent marque clairement le début de chaque mesure.",s:["P+1",0,"3","2","P'",0,"3","2"]},
+  arp34:{n:"Arpège 3/4",b:3,d:"Pouce, puis cordes 3, 2, 1, 2, 3 : un arpège par mesure de trois temps, pour les valses et les berceuses.",s:["P","3","2","1","2","3"]}
+});
+function beatsOfPat(k){const p=PATS[k];if(p&&p.b)return p.b;return k==="valse"?3:(p&&p.s.length===6?6:4);}
+function pluckP(name,p,t,capo,dest,acc){String(p).split("+").forEach((q,k)=>pluck1(name,q,t+k*.004,capo,dest,acc));}
+function pluck1(name,q,t,capo,dest,acc){const c=CHORDS[name];if(!c)return;const b0=c.f.findIndex(f=>f>=0);let i;
+  if(q==="B"||q==="P")i=b0;else if(q==="P'"){i=b0+1;while(i<6&&c.f[i]<0)i++;if(i>=6)i=b0;}else i=6-(+q);
+  if(!(i>=0&&i<=5)||c.f[i]<0)return;note(i,c.f[i]+(capo||0),t,acc?.36:.3,dest);}
+
+/* --- Redemption Song --- */
+(function(){const R={id:"redemption",t:"Redemption Song",a:"Bob Marley",lvl:2,bpm:74,beats:4,capo:0,pat:"pop",ch:["G","Em","C","C/B","Am","D"],simp:"Sans l'intro en notes.",voice:false,
+  tip:"Rythme pop folk : bas, bas-haut, haut-bas-haut. Sur C puis C/B, seul le majeur bouge et la basse descend de Do à Si, vers le Am. Marley la joue seul à la guitare acoustique : essaie-la aussi en arpège.",
+  sec:[{n:"Couplet 1",b:["G","Em","C C/B","Am","G","Em","C C/B","Am","G","Em","C","C C/B","Am","G","Em","C","D","D"]},
+    {n:"Refrain",b:["G","C D","G","C D","Em","C D","G","C D"]},
+    {n:"Couplet 2",b:["G","Em","C C/B","Am","G","Em","C C/B","D","D"],x:2},
+    {n:"Dernier refrain",b:["G","C D","G","C D","Em","C D","G","C D"],x:2}]};
+  SONGS.push(R);byId[R.id]=R;
+  const st=STEPS.find(s=>s.t==="Quatre accords en boucle");if(st){st.songs.push("redemption");st.chords.push("C/B");}
+  SRC.redemption=["Heartwood Guitar","https://www.heartwoodguitar.com/chords/bob-marley-redemption-song/"];})();
+
+/* --- section Arpèges --- */
+const ARP_PATS=["arpUp","arp44","travis","pinch","arp34","arp68"];
+const ARP_PROGS=[["C","Am","F","G"],["G","Em","C","D"],["Am","C","D","F"],["Am","G","F","E"],["G","Em","C C/B","Am"]];
+let AR={pat:"arpUp",prog:0,bpm:72};
+function fingerSVG(){const Y=n=>14+(n-1)*15;let s='<svg class="dg fingers" viewBox="0 0 300 100" role="img" aria-label="Quel doigt sur quelle corde : annulaire sur la 1, majeur sur la 2, index sur la 3, pouce sur les cordes 4 à 6">';
+  for(let n=1;n<=6;n++)s+=`<line class="st" x1="30" x2="194" y1="${Y(n)}" y2="${Y(n)}" stroke-width="${(0.9+n*.2).toFixed(1)}"/><text class="mu" x="16" y="${Y(n)+4}">${n}</text>`;
+  [["a","annulaire"],["m","majeur"],["i","index"]].forEach(([l,w],k)=>{s+=`<text class="fl" x="206" y="${Y(k+1)+4}"><tspan class="fk">${l}</tspan> ${w}</text>`;});
+  s+=`<line class="br" x1="202" x2="202" y1="${Y(4)-4}" y2="${Y(6)+4}"/><text class="fl" x="210" y="${Y(5)+4}"><tspan class="fk">p</tspan> pouce</text>`;
+  return s+"</svg>";}
+function arpPanelHTML(){const pat=PATS[AR.pat],bts=beatsOfPat(AR.pat),cl=countLabels(pat.s.length,bts);
+  return `<section class="panel stack" id="ex-arp">
+  <div><div class="eyebrow">Main droite, doigt par doigt</div><h3>Arpèges</h3></div>
+  <p class="note">Au lieu de gratter, tu pinces les cordes une par une. Chaque doigt a sa corde : le pouce pour les basses, l'index, le majeur et l'annulaire pour les trois cordes aiguës.</p>
+  ${fingerSVG()}
+  <p class="note">Dans les grilles : P = pouce sur la basse de l'accord, P' = pouce sur la corde voisine, 1, 2, 3 = numéro de la corde aiguë, P+1 = pouce et annulaire en même temps.</p>
+  <div class="chips">${ARP_PATS.map(k=>`<button class="chip" data-act="apat" data-v="${k}" aria-pressed="${k===AR.pat}">${PATS[k].n}</button>`).join("")}</div>
+  <p class="note">${esc(pat.d)}</p>
+  <div class="patrow" id="astrum" style="grid-template-columns:repeat(${pat.s.length},minmax(0,1fr))">${pat.s.map((p,i)=>`<div class="sl"><span class="ar">${arrow(p)}</span><span class="ct">${cl[i]}</span></div>`).join("")}</div>
+  <div class="stack" style="gap:6px"><span class="eyebrow">Grille</span><div class="chips">${ARP_PROGS.map((g,i)=>`<button class="chip" data-act="aprog" data-v="${i}" aria-pressed="${i===AR.prog}">${g.map(x=>x.replace(" "," → ")).join(" · ")}</button>`).join("")}</div></div>
+  <div class="tempo"><span class="eyebrow">Tempo</span><input type="range" id="abpm" min="40" max="120" step="2" value="${AR.bpm}" aria-label="Tempo des arpèges"><span class="num" id="abpmLbl" style="font-size:13px">${AR.bpm} BPM</span></div>
+  <div class="row"><button class="btn pri" id="aplay" data-act="aplay">▶ Jouer l'arpège</button><span id="anow" style="font-family:var(--f-display);font-size:24px;font-weight:700"></span></div>
+  <p class="note">Commence lentement en regardant ta main droite, puis joue en regardant la grille. À essayer ensuite en morceau : ${["redemption","rising-sun","hallelujah","perfect","stand-by-me"].map(id=>`<button class="linkbtn" data-act="song" data-v="${id}">${esc(byId[id].t)}</button>`).join(", ")}. Dans chaque morceau, active « Jouer en arpège ».</p>
+  </section>`;}
+function bindArp(){const r=$("#abpm");if(r)r.addEventListener("input",e=>{AR.bpm=+e.target.value;$("#abpmLbl").textContent=AR.bpm+" BPM";});}
+function paintArp(){const el=$("#ex-arp");if(!el)return;el.outerHTML=arpPanelHTML();bindArp();}
+function arpPlay(){if(Eng.run){engStop();return;}const pat=PATS[AR.pat].s,bts=beatsOfPat(AR.pat),prog=ARP_PROGS[AR.prog];
+  engStart({bars:prog.map(c=>({ch:c.split(" ")})),beats:bts,bpm:()=>AR.bpm*(bts===6?1/3:1),pattern:pat,mix:()=>({guitar:true,click:true}),capo:0,loop:()=>[0,prog.length-1],startBar:0,countIn:true,
+    onStep:(b,s)=>{$$("#astrum .sl").forEach((c,i)=>c.classList.toggle("on",i===s));const n=$("#anow");if(n){const bar=b<0?null:prog[b].split(" ");n.textContent=b<0?"Prêt…":(bar.length>1&&s>=pat.length/2?bar[1]:bar[0]);}},
+    onStop:sec=>{const b=$("#aplay");if(b)b.textContent="▶ Jouer l'arpège";$$("#astrum .sl").forEach(c=>c.classList.remove("on"));const n=$("#anow");if(n)n.textContent="";if(sec>=60)doneToday("rhythm");render2Stats();}});
+  $("#aplay").textContent="■ Stop";markDay();}
+function afterExercices(){if($("#ex-tabs"))return;const h=main.querySelector("h2");if(!h)return;
+  h.insertAdjacentHTML("afterend",arpPanelHTML()+`<section class="panel stack" id="ex-tabs"><div><div class="eyebrow">Note par note</div><h3>Tablatures et techniques</h3></div><p class="note">Lire une tablature, puis jouer des mélodies et les techniques qui font sonner « comme le disque ».</p><div class="tablist">${TABS.map(t=>`<button class="songlink" data-act="tabopen" data-v="${t.id}">${esc(t.t)}${P.tabs&&P.tabs[t.id]?' <span class="badge-mem">Validée</span>':""}</button>`).join("")}</div></section>`);
+  main.insertAdjacentHTML("beforeend",`<section class="panel stack">${recordHTML()}</section>`);bindArp();}
+function afterSong(){
+  const ctl=$(".controls");if(!ctl)return;const notes=ctl.querySelectorAll(":scope > p.note");
+  if(notes.length)notes[notes.length-1].textContent="Étoiles, guitare de l'appli coupée : ★ morceau joué en entier au ralenti · ★★ à 75 % · ★★★ au tempo original. Touche une mesure pour démarrer à cet endroit.";
+  const tr=$(".controls .tempo");if(tr&&!$("#tapBtn"))tr.insertAdjacentHTML("afterend",`<div class="row"><button class="btn sm" id="tapBtn" data-act="tap">Taper le tempo</button><span class="note">Tape au moins 4 fois en rythme avec le vrai morceau : l'appli se cale dessus.</span></div>`);
+  const rr=$("#rate");if(rr)rr.max="120";
+  const orig=byId[S.song.id],sp=$('[data-act="speed"]');
+  if(sp&&!ARP_PATS.includes(orig.pat)&&!$('[data-act="arpmode"]'))sp.insertAdjacentHTML("afterend",'<button class="chip" data-act="arpmode" aria-pressed="false">Jouer en arpège</button>');
+  if(view.from==="exercices"){const bk=$('[data-act="back"]');if(bk)bk.textContent="← Exercices";}
+  const tipP=[...$$("section.panel")].find(s=>{const h=s.querySelector("h3");return h&&h.textContent==="Conseil";});
+  if(tipP){const src=SRC[S.song.id];tipP.insertAdjacentHTML("beforeend",src?`<p class="note">Grille vérifiée sur <a href="${src[1]}" target="_blank" rel="noopener" style="color:var(--brass-ink);font-weight:600">${esc(src[0])}</a>.</p>`:S.song.cat==="perso"?"":`<p class="note">${S.song.cat==="comptine"?"Arrangement simplifié pour débutant.":"Grille simplifiée, écrite d'après les versions les plus courantes."}</p>`);
+    tipP.insertAdjacentHTML("afterend",`<section class="panel stack">${recordHTML()}</section>`+coachHTML("Ex. : je n'arrive pas à changer d'accord à temps sur le refrain"));}
+}
+(function(){
+  const _goex=ACT.goex;ACT.goex=(v,el)=>{const p=el&&el.dataset.p;if(v==="rhythm"&&p!=null&&STEPS[+p]&&ARP_PATS.includes(STEPS[+p].pat)){AR.pat=STEPS[+p].pat;go("exercices",{focus:"arp"});return;}_goex(v,el);};
+  Object.assign(ACT,{
+    apat:v=>{if(Eng.run)engStop();AR.pat=v;paintArp();},
+    aprog:v=>{if(Eng.run)engStop();AR.prog=+v;paintArp();},
+    aplay:()=>arpPlay(),
+    arpmode:(v,el)=>{if(Eng.run)engStop();const orig=byId[S.song.id],on=S.song.pat===orig.pat,pat=on?(orig.beats===6?"arp68":orig.beats===3?"arp34":"arpUp"):orig.pat;
+      S.song=Object.assign({},orig,{pat});el.setAttribute("aria-pressed",on);const P2=PATS[pat],cl=countLabels(P2.s.length,orig.beats),st=$("#strum");
+      if(st){st.style.gridTemplateColumns=`repeat(${P2.s.length},minmax(0,1fr))`;st.innerHTML=P2.s.map((p,i)=>`<div class="sl"><span class="ar">${arrow(p)}</span><span class="ct">${cl[i]}</span></div>`).join("");}
+      $$(".meta span").forEach(x=>{if(x.textContent.startsWith("Rythme"))x.textContent="Rythme "+P2.n.toLowerCase();});
+      toast(on?"Arpège : pouce sur la basse, puis cordes 3, 2, 1.":"Retour au rythme d'origine.");}
+  });
+})();
 initCloud();initCoach();
 render();
 </script>
